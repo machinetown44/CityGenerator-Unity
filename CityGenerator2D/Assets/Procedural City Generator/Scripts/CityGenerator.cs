@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Threading;
 using BlockGeneration;
 using GraphModel;
@@ -7,10 +7,14 @@ using RoadGeneration;
 using BlockDivision;
 using Services;
 using UnityEngine;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
+using System;
 
 public class CityGenerator : MonoBehaviour
 {
-    private Graph roadGraph; //Graph which will be built, and then drawn
+    public Graph roadGraph; //Graph which will be built, and then drawn
     private List<BlockNode> blockNodes; //Nodes of the Blocks
     private List<Block> blocks;
     private List<Block> thinnedBlocks;
@@ -67,10 +71,13 @@ public class CityGenerator : MonoBehaviour
     public bool drawTriangulatedMeshes;
     public bool drawBoundingBoxes;
     public bool drawLots = true;
+    public bool drawNative = true;
 
     //Event to call, when the generation is ready
     private bool genReady;
     private bool genDone;
+
+    public Action onDataGenerated;
     
     void Start()
     { 
@@ -87,6 +94,7 @@ public class CityGenerator : MonoBehaviour
         if (genReady && !genDone) //This make sure, that this will be only called once
         {
             genDone = true;
+            onDataGenerated?.Invoke();
             GenerateGameObjects();
         }
     }
@@ -154,6 +162,8 @@ public class CityGenerator : MonoBehaviour
         genReady = true;
     }
 
+
+
     private void GenerateGameObjects()
     {
         var separator = new GameObject();
@@ -207,6 +217,9 @@ public class CityGenerator : MonoBehaviour
             if (lotMeshes[i].Block.IsPark) lot.GetComponent<MeshRenderer>().material = parkMaterial;
             else lot.GetComponent<MeshRenderer>().material = lotMaterial;
         }
+        StaticBatchingUtility.Combine(lotContainer);
+        StaticBatchingUtility.Combine(blockContainer);
+        
     }
 
     private void OnDrawGizmos()
@@ -215,11 +228,12 @@ public class CityGenerator : MonoBehaviour
         {
             return;
         }
-
+        Gizmos.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.Euler(90,0,0), Vector3.one);
+    
         if (drawRoads)
         {
-            GizmoService.DrawEdges(roadGraph.MajorEdges, Color.white);
-            GizmoService.DrawEdges(roadGraph.MinorEdges, Color.black);
+            //GizmoService.DrawEdges(roadGraph.MajorEdges, Color.white);
+            GizmoService.DrawEdges(roadGraph.MinorEdges, Color.white);
         }
 
         if (drawRoadNodes)
@@ -273,5 +287,6 @@ public class CityGenerator : MonoBehaviour
         {
             GizmoService.DrawBlocks(lots, new Color(0.2f, 0.7f, 0.7f));
         }
+        Gizmos.matrix = Matrix4x4.identity;
     }
 }
